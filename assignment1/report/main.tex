@@ -1,0 +1,126 @@
+% This is based on the LLNCS.DEM the demonstration file of
+% the LaTeX macro package from Springer-Verlag
+% for Lecture Notes in Computer Science,
+% version 2.4 for LaTeX2e as of 16. April 2010
+%
+% See http://www.springer.com/computer/lncs/lncs+authors?SGWID=0-40209-0-0-0
+% for the full guidelines.
+%
+\documentclass{llncs}
+
+% These changes make it no llncs acceptable
+\usepackage[utf8]{inputenc}
+\usepackage{amsmath}
+\usepackage{amssymb}
+\usepackage{booktabs}
+\usepackage{graphicx}
+\usepackage{geometry}
+\geometry{%
+        %a4paper,        % or letterpaper
+        textwidth=14cm,  % llncs has 12.2cm
+        textheight=24cm, % llncs has 19.3cm
+        hratio=1:1,      % horizontally centered
+        %vratio=2:3,     % not vertically centered
+        heightrounded,   % integer number of lines
+}
+
+\begin{document}
+
+\title{Algorithms in Recommender Systems}
+
+\titlerunning{Recommender Systems}
+% abbreviated title (for running head)
+% also used for the TOC unless
+% \toctitle is used
+
+\author{Felipe Scrochio Custódio - 9442688\inst{1}}
+%\author{Ivar Ekeland\inst{1} \and Roger Temam\inst{2}
+%Jeffrey Dean \and David Grove \and Craig Chambers \and Kim~B.~Bruce \and
+%Elsa Bertino}
+
+\authorrunning{Felipe Scrochio Custódio} % abbreviated author list (for running head)
+% list of authors for the TOC (use if author list has to be modified)
+%\tocauthor{Ivar Ekeland, Roger Temam, Jeffrey Dean, David Grove,
+%Craig Chambers, Kim B. Bruce, and Elisa Bertino}
+
+\institute{University of São Paulo, São Carlos, Brazil,\\
+\email{felipe.scrochio.custodio@usp.br}}
+%\institute{Princeton University, Princeton NJ 08544, USA,\\
+%\email{I.Ekeland@princeton.edu},\\ WWW home page:
+%\texttt{http://users/\homedir iekeland/web/welcome.html}
+%\and
+%Universit\'{e} de Paris-Sud,
+%Laboratoire d'Analyse Num\'{e}rique, B\^{a}timent 425,\\
+%F-91405 Orsay Cedex, France}
+
+\maketitle              % typeset the title of the contribution
+
+\begin{abstract}
+        Lorem ipsum dolor sit amet, consectetur adipisicing elit, sed do eiusmod tempor incididunt ut labore et dolore magna aliqua. Ut enim ad minim veniam, quis nostrud exercitation ullamco laboris nisi ut aliquip ex ea commodo consequat. Duis aute irure dolor in reprehenderit in voluptate velit esse cillum dolore eu fugiat nulla pariatur. Excepteur sint occaecat cupidatat non proident, sunt in culpa qui officia deserunt mollit anim id est laborum.
+%The abstract should summarize the contents of the paper
+%using at least 70 and at most 150 words. It will be set in 9-point
+%font size and be inset 1.0 cm from the right and left margins.
+%There will be two blank lines before and after the Abstract.
+\dots
+%\keywords{computational geometry, graph theory, Hamilton cycles}
+\end{abstract}
+
+\section{Databases}\label{intro}
+%
+
+Lorem ipsum dolor sit amet, consectetur adipisicing elit, sed do eiusmod tempor incididunt ut labore et dolore magna aliqua. Ut enim ad minim veniam, quis nostrud exercitation ullamco laboris nisi ut aliquip ex ea commodo consequat. Duis aute irure dolor in reprehenderit in voluptate velit esse cillum dolore eu fugiat nulla pariatur. Excepteur sint occaecat cupidatat non proident, sunt in culpa qui officia deserunt mollit anim id est laborum.
+%With this chapter, the preliminaries are over, and we begin the search
+%for periodic solutions to Hamiltonian systems. All this will be done in
+%the convex case; that is, we shall study the boundary-value problem
+%\begin{eqnarray*}
+%  \dot{x}&=&JH' (t,x)\\
+%  x(0) &=& x(T)
+%\end{eqnarray*}
+%with $H(t,\cdot)$ a convex function of $x$, going to $+\infty$ when
+%$\left\|x\right\| \to \infty$.
+
+%
+% ---- Bibliography ----
+%
+\begin{thebibliography}{3}
+%
+%\bibitem {clar:eke}
+%Clarke, F., Ekeland, I.:
+%Nonlinear oscillations and
+%boundary-value problems for Hamiltonian systems.
+%Arch. Rat. Mech. Anal. 78, 315--333 (1982)
+%
+%\bibitem {clar:eke:2}
+%Clarke, F., Ekeland, I.:
+%Solutions p\'{e}riodiques, du
+%p\'{e}riode donn\'{e}e, des \'{e}quations hamiltoniennes.
+%Note CRAS Paris 287, 1013--1015 (1978)
+%
+%\bibitem {mich:tar}
+%Michalek, R., Tarantello, G.:
+%Subharmonic solutions with prescribed minimal
+%period for nonautonomous Hamiltonian systems.
+%J. Diff. Eq. 72, 28--55 (1988)
+%
+%\bibitem {tar}
+%Tarantello, G.:
+%Subharmonic solutions for Hamiltonian
+%systems via a $\bbbz_{p}$ pseudoindex theory.
+%Annali di Matematica Pura (to appear)
+%
+%\bibitem {rab}
+%Rabinowitz, P.:
+%On subharmonic solutions of a Hamiltonian system.
+%Comm. Pure Appl. Math. 33, 609--633 (1980)
+
+% example
+\bibitem{barabasi}
+Erzsébet Ravasz and Albert-László Barabási (2003).
+`Hierarchical organizations in complex networks'.
+Department of Physics, 225 Nieuwland Science Hall,
+University of Notre Dame, Notre Dame, Indiana 46556.
+doi: 10.1103/PhysRevE.67.026112.
+
+\end{thebibliography}
+
+\end{document}
