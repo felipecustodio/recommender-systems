@@ -56,13 +56,13 @@ def main():
     print('RAM usage: {0:.3g}GB'.format(memoryUse))
 
     # plot initial ratings heatmap
-    # sns.set()
-    # sns.set_context("poster")
-    # sns.heatmap(train_data_matrix, xticklabels=False, yticklabels=False, cmap='viridis', cbar_kws={"label": "rating"})
-    # figure = plt.gcf()  # get current figure
-    # figure.set_size_inches(8, 6)
-    # # save with high DPI
-    # plt.savefig("plots/initial_ratings.png", dpi = 100)
+    sns.set()
+    sns.set_context("poster")
+    sns.heatmap(train_data_matrix, xticklabels=False, yticklabels=False, cmap='viridis', cbar_kws={"label": "rating"})
+    figure = plt.gcf()  # get current figure
+    figure.set_size_inches(8, 6)
+    # save with high DPI
+    plt.savefig("plots/initial_ratings.png", dpi = 100)
 
     # split training data into TRAIN and VALIDATION
 
@@ -71,7 +71,8 @@ def main():
         user = getattr(row, "user_id")
         movie = getattr(row, "movie_id")
         movie_name = movies_data['title'][movie-1]
-        print("pred(user: {}, movie:{} movie_id: {})".format(user, movie_name, movie))
+        print("What rating would {} give for {}?".format(user, movie_name))
+        # run recommendation algorithms for (u, i)
 
 if __name__ == '__main__':
     main()
