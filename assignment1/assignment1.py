@@ -9,15 +9,9 @@ Professor Marcelo Manzato
 Student: Felipe Scrochio Custódio - 9442688
 """
 
-import os
-import psutil
-import operator
-
-import time
 import progressbar
 from timeit import default_timer as timer
 
-import math
 import pandas
 import numpy as np
 import matplotlib.pyplot as plt
@@ -25,78 +19,82 @@ import seaborn as sns
 
 
 # Algorithms
-def user_median_ratings(ratings, user):
+def user_mean_ratings(ratings, user):
     # get only existing ratings
-    # filter None eliminates false values
-    existing_ratings = list(filter(None, ratings[user]))
-    median = np.sum(existing_ratings) / len(existing_ratings)
-    return median
-
-
-def similarity_user(u1, u2):
-    pass
+    # filter unknown values (0)
+    existing_ratings = list(filter(lambda a: a != 0, ratings[user]))
+    mean = np.average(existing_ratings)
+    return mean
 
 
 def similarity_item(ratings, i, j):
-    numerator, denominator, denominator1, denominator2 = (0,0,0,0)
+    numerator, denominator, denominator1, denominator2 = (0, 0, 0, 0)
     # find all users that rated i and j (U)
     U = []
     # slice i and j columns
-    i_ratings = ratings[:,i]
-    j_ratings = ratings[:,j]
+    i_ratings = ratings[:, i]
+    j_ratings = ratings[:, j]
     for user_id, rating in enumerate(i_ratings):
         # if both items were rated by user, append to U
-        if ((i_ratings[user_id-1] != None) and (j_ratings[user_id-1]) != None):
-            U.append(user_id)
+        if (i_ratings[user_id] != 0):
+            if (j_ratings[user_id] != 0):
+                U.append(user_id)
 
     # if users were found, calculate similarity
     if U:
         for user in U:
             # get user ratings for i and j
-            rui = i_ratings[user-1]
-            ruj = j_ratings[user-1]
-            # get user globan median
-            ru = user_median_ratings(ratings, user)
+            rui = i_ratings[user]
+            ruj = j_ratings[user]
+            # get user globan mean
+            ru = user_mean_ratings(ratings, user)
             # calculate similarity
             numerator += ((rui - ru) * (ruj - ru))
             denominator1 += (np.power((rui - ru), 2))
             denominator2 += (np.power((ruj - ru), 2))
         denominator = np.sqrt(denominator1) * np.sqrt(denominator2)
         try:
-            similarity = float(numerator) / float(denominator)
+            similarity = ((float(numerator)) / (float(denominator)))
         except ZeroDivisionError:
             # division by zero probably means there was only
             # one user that rated both items i and j, rating
-            # with his median, which yields division by zero
-            similarity = -1
+            # with his mean, which yields division by zero
+            similarity = 0
     else:
         # no users found, set similarity to least possible
-        similarity = -1
+        similarity = 0
+    if (similarity < 0):
+        similarity = 0
     return similarity
 
 
 def k_most_similar_items(ratings, u, i, k):
     # similarity list has size 'number of items'
-    similarities = np.empty((ratings.shape[1]))
+    similarities = np.full((ratings.shape[1]), -1, dtype=float)
     # items that user 'u' rated
-    items = ratings[u]
+    user_ratings = ratings[u]
+
     # find all similarities with item 'i'
     # that 'u' has rated
-    for movie_id, item in enumerate(items):
-        if (ratings[u-1][movie_id-1] != None):
-            similarities[movie_id-1] = similarity_item(ratings, i, movie_id)
+    for movie_id, rating in enumerate(user_ratings):
+        # filter items that user did not rate
+        if (rating != 0):
+            similarities[movie_id] = similarity_item(ratings, i, movie_id)
+
     # sort similarities list and get 'k' most similar
     k_biggest = similarities[np.argsort(similarities)[-k:]]
-    # filter NaN
-    # k_biggest = k_biggest[~np.isnan(k_biggest)]
-    # filter values with a treshold of 0.01
-    k_biggest = k_biggest[k_biggest > 0.01]
+    k_biggest = k_biggest[::-1]
+
+    # after we sort, we lose the movie_id as a position
     # we need to know which movie_id has that similarity
+    # that's possible by finding the index where that
+    # similarity occured in the previous 'similarity' list
+
     # turn list into dictionary
     k_most_similar = {}
     for similarity in k_biggest:
         # get movie_id that has similarity 'similarity'
-        movie_id = (list(similarities).index(similarity)) + 1
+        movie_id = (similarities.tolist()).index(similarity)
         # index similarity by movie_id
         k_most_similar[movie_id] = similarity
     return k_most_similar
@@ -104,25 +102,21 @@ def k_most_similar_items(ratings, u, i, k):
 
 # Item-Item Collaborative Filtering
 def itemCF(ratings, u, i, k):
-    numerator = denominator = 0
+    numerator = 0
+    denominator = 0
     # find k most similar itens
     k_most_similar = k_most_similar_items(ratings, u, i, k)
-    print(k_most_similar.keys())
-    # similars = dictionary indexed by movie_id
+    print("K_most_similars:")
+    print(k_most_similar)
+    # k_most_similars = dictionary indexed by movie_id
     for movie_id, similarity in k_most_similar.items():
-        print("MOVIE: {} RATING: {}".format(movie_id, ratings[u-1][movie_id-1]))
-        numerator += similarity * ratings[u-1][movie_id-1]
+        numerator += similarity * ratings[u][movie_id]
         denominator += similarity
     prediction = (numerator / denominator)
-    print("Rating predicted: {}".format(prediction))
     return prediction
 
 
 def main():
-    # get current process for performance profiling
-    pid = os.getpid()
-    py = psutil.Process(pid)
-
     # read dataset
     movies_data = pandas.read_csv("csv/movies_data.csv")
     test_data = pandas.read_csv("csv/test_data.csv")
@@ -133,64 +127,48 @@ def main():
     # initialize our data matrix
     n_users = train_data['user_id'].max()
     n_items = movies_data['movie_id'].max()
-    # unknown ratings are filled with None
-    train_data_matrix = np.full((n_users, n_items), None)
-    test_data_matrix = np.full((n_users, n_items), None)
+    # unknown ratings are filled with 0
+    train_data_matrix = np.full((n_users, n_items), 0)
+    test_data_matrix = np.full((n_users, n_items), 0)
 
-    memoryUse_before = py.memory_info()[0]/2.**30
     # generate (user x movie) ratings matrix
     print("Generating user x movie ratings matrix")
     with progressbar.ProgressBar(max_value=len(train_data)) as bar:
         counter = 0
         for row in train_data.itertuples():
-            user = getattr(row, "user_id") - 1
-            movie = getattr(row, "movie_id") - 1
+            user = getattr(row, "user_id")
+            movie = getattr(row, "movie_id")
             rating = getattr(row, "rating")
-            train_data_matrix[user][movie] = rating
+            train_data_matrix[user-1][movie-1] = rating
             counter += 1
             bar.update(counter)
-
-    # measure RAM impact
-    memoryUse_after = py.memory_info()[0]/2.**30  # memory use in GB
-    memoryUse = memoryUse_after - memoryUse_before
-    print('~ RAM usage for matrix: {0:.3g}GB'.format(memoryUse))
-
-    # plot initial ratings heatmap
-    # sns.set()
-    # sns.set_context("poster")
-    # sns.heatmap(train_data_matrix, xticklabels=False, yticklabels=False, cmap='viridis', cbar_kws={"label": "rating"})
-    # figure = plt.gcf()  # get current figure
-    # figure.set_size_inches(8, 6)
-    # # save with high DPI
-    # plt.savefig("plots/initial_ratings.png", dpi = 100)
 
     # split training data into TRAIN and VALIDATION
 
     # run algorithms with TEST
-    print("Generating tests dictionary...")
+    total_time = 0
     print("Run ITEM-ITEM-COLLABORATIVE-FILTERING")
     for row in test_data.itertuples():
         user = getattr(row, "user_id")
         movie = getattr(row, "movie_id")
         movie_name = movies_data['title'][movie-1]
-        # print("What rating would {} give for {}?".format(user, movie_name))
         # run recommendation algorithms for (u, i)
         start = timer()
-        print("Predicting user {} rating for movie {}".format(user, movie_name))
-        itemCF(train_data_matrix, user, movie, 50)
+        prediction = itemCF(train_data_matrix, user-1, movie-1, 20)
+        print("pred({},{}) = {}".format(user, movie_name, prediction))
         end = timer()
-        print("Elapsed time: {}".format(end - start))
+        print("Elapsed time: {}s".format(end - start))
+        total_time += (end-start)
 
 
 if __name__ == '__main__':
     try:
+        import IPython.core.ultratb
+    except ImportError:
+        # No IPython. Use default exception printing.
+        pass
+    else:
+        import sys
+        import textwrap
+        sys.excepthook = IPython.core.ultratb.ColorTB()
         main()
-    except:
-        # colorize error output
-        import re
-        from sys import exc_info
-        from traceback import format_exception
-
-        RED, REV = r'\033[91m', r'\033[0m'
-        err = ''.join(format_exception(*exc_info()))
-        print(re.sub(r'(\w*Err\w*)', RED + r'\1' + REV, err))
