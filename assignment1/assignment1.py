@@ -18,7 +18,36 @@ import matplotlib.pyplot as plt
 import seaborn as sns
 
 
-# Algorithms
+###########
+# RF-REC #
+###########
+
+def rf_rec(ratings, user, item):
+    # get all user and item ratings
+    user_ratings = ratings[user]
+    item_ratings = ratings[:, item]
+    # initialize frequencies + 1
+    frequencies_user = [1,1,1,1,1]
+    frequencies_item = [1,1,1,1,1]
+    rui = [0,0,0,0,0]
+    # get frequency of all possible ratings
+    # by user 'user' and by item 'item'
+    for i in range(1,6):
+        for rating in user_ratings:
+            if (rating == i):
+                frequencies_user[i-1] += 1
+        for rating in item_ratings:
+            if (rating == i):
+                frequencies_item[i-1] += 1
+        rui[i-1] = frequencies_user[i-1] * frequencies_item[i-1]
+    prediction = rui.index(max(rui)) + 1
+    return prediction
+
+
+#####################################
+# ITEM-ITEM COLLABORATIVE FILTERING #
+#####################################
+
 def user_mean_ratings(ratings, user):
     # get only existing ratings
     # filter unknown values (0)
@@ -116,6 +145,10 @@ def itemCF(ratings, u, i, k):
     return prediction
 
 
+########
+# MAIN #
+########
+
 def main():
     # read dataset
     movies_data = pandas.read_csv("csv/movies_data.csv")
@@ -147,14 +180,16 @@ def main():
 
     # run algorithms with TEST
     total_time = 0
-    print("Run ITEM-ITEM-COLLABORATIVE-FILTERING")
+    # print("Run ITEM-ITEM-COLLABORATIVE-FILTERING")
+    print("RF-REC")
     for row in test_data.itertuples():
         user = getattr(row, "user_id")
         movie = getattr(row, "movie_id")
         movie_name = movies_data['title'][movie-1]
         # run recommendation algorithms for (u, i)
         start = timer()
-        prediction = itemCF(train_data_matrix, user-1, movie-1, 20)
+        # prediction = itemCF(train_data_matrix, user-1, movie-1, 20)
+        prediction = rf_rec(train_data_matrix, user-1, movie-1)
         print("pred({},{}) = {}".format(user, movie_name, prediction))
         end = timer()
         print("Elapsed time: {}s".format(end - start))
