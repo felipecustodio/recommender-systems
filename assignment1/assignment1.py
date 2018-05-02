@@ -18,6 +18,58 @@ import matplotlib.pyplot as plt
 import seaborn as sns
 
 
+###############################
+# MATRIX DECOMPOSITION (SVD)  #
+###############################
+
+
+###################
+# BASELINE METHOD #
+###################
+
+def global_average(ratings):
+    average = np.average(ratings)
+    return average
+
+
+def bias_item(ratings, item, global_avg):
+    item_ratings = ratings[:, item]
+    bias = sum(item_ratings) - global_avg
+    Ri = 0
+    Ri = sum(1 for i in range(len(item_ratings)) if item_ratings[i] != 0)
+    bias = bias / Ri
+    return bias
+
+
+def bias_user(ratings, user, global_avg):
+    user_ratings = ratings[user]
+    bias = 0
+    Ru = 0
+    for item, rating in enumerate(user_ratings):
+        if (rating != 0):
+            bi = bias_item(ratings, item, global_avg)
+            bias += rating - global_avg - bi
+            Ru += 1
+    if (Ru == 0):
+        # no other items were rated
+        bias = global_avg
+    else:
+        bias = bias / Ru
+    return bias
+
+
+def baseline(ratings, user, item):
+    u = global_average(ratings)
+    bu = bias_user(ratings, user, u)
+    bi = bias_item(ratings, item, u)
+    rui = u + bi + bu
+    return rui
+
+########################
+# PROBABILISTIC METHOD #
+########################
+
+
 ###########
 # RF-REC #
 ###########
@@ -39,7 +91,9 @@ def rf_rec(ratings, user, item):
         for rating in item_ratings:
             if (rating == i):
                 frequencies_item[i-1] += 1
+        # multiply rating frequency for user and item
         rui[i-1] = frequencies_user[i-1] * frequencies_item[i-1]
+    # pred = arg max freq(user) x freq(item)
     prediction = rui.index(max(rui)) + 1
     return prediction
 
@@ -135,8 +189,6 @@ def itemCF(ratings, u, i, k):
     denominator = 0
     # find k most similar itens
     k_most_similar = k_most_similar_items(ratings, u, i, k)
-    print("K_most_similars:")
-    print(k_most_similar)
     # k_most_similars = dictionary indexed by movie_id
     for movie_id, similarity in k_most_similar.items():
         numerator += similarity * ratings[u][movie_id]
@@ -181,7 +233,7 @@ def main():
     # run algorithms with TEST
     total_time = 0
     # print("Run ITEM-ITEM-COLLABORATIVE-FILTERING")
-    print("RF-REC")
+    print("BASELINE")
     for row in test_data.itertuples():
         user = getattr(row, "user_id")
         movie = getattr(row, "movie_id")
@@ -189,12 +241,12 @@ def main():
         # run recommendation algorithms for (u, i)
         start = timer()
         # prediction = itemCF(train_data_matrix, user-1, movie-1, 20)
-        prediction = rf_rec(train_data_matrix, user-1, movie-1)
+        prediction = baseline(train_data_matrix, user-1, movie-1)
         print("pred({},{}) = {}".format(user, movie_name, prediction))
         end = timer()
         print("Elapsed time: {}s".format(end - start))
         total_time += (end-start)
-
+    print("TOTAL TIME: {}s".format(total_time))
 
 if __name__ == '__main__':
     try:
