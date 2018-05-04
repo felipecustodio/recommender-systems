@@ -19,8 +19,21 @@ import seaborn as sns
 
 
 ###############################
+# STOCHASTIC GRADIENT DESCENT #
+###############################
+
+def SGD(ratings, user, item):
+    pass
+
+
+###############################
 # MATRIX DECOMPOSITION (SVD)  #
 ###############################
+
+def SVD(ratings, user, item):
+    u, s, v = np.linalg.svd(ratings)
+    # prediction with absolute ratings
+    # prediction with relative ratings
 
 
 ###################
@@ -28,8 +41,14 @@ import seaborn as sns
 ###################
 
 def global_average(ratings):
-    average = np.average(ratings)
-    return average
+    size = 0
+    total = 0
+    for user_rating in ratings:
+        for rating in user_rating:
+            if (rating != 0):
+                total += rating
+                size += 1
+    return (total / size)
 
 
 def bias_item(ratings, item, global_avg):
@@ -65,9 +84,22 @@ def baseline(ratings, user, item):
     rui = u + bi + bu
     return rui
 
+
 ########################
 # PROBABILISTIC METHOD #
 ########################
+
+def bayes_method(ratings, user, item):
+    probabilities = [0, 0, 0, 0, 0]
+
+    for i in range(1, 6):
+        # P(Y)
+        # P(item i = 1)
+        # P(item i = 2)
+        # P(item i = 3)
+        # P(item i = 4)
+        # P(item i = 5)
+        pass
 
 
 ###########
@@ -79,12 +111,12 @@ def rf_rec(ratings, user, item):
     user_ratings = ratings[user]
     item_ratings = ratings[:, item]
     # initialize frequencies + 1
-    frequencies_user = [1,1,1,1,1]
-    frequencies_item = [1,1,1,1,1]
-    rui = [0,0,0,0,0]
+    frequencies_user = [1, 1, 1, 1, 1]
+    frequencies_item = [1, 1, 1, 1, 1]
+    rui = [0, 0, 0, 0, 0]
     # get frequency of all possible ratings
     # by user 'user' and by item 'item'
-    for i in range(1,6):
+    for i in range(1, 6):
         for rating in user_ratings:
             if (rating == i):
                 frequencies_user[i-1] += 1
@@ -163,6 +195,7 @@ def k_most_similar_items(ratings, u, i, k):
         # filter items that user did not rate
         if (rating != 0):
             similarities[movie_id] = similarity_item(ratings, i, movie_id)
+            # similarities[movie_id] = similarities_matrix[i][movie_id]
 
     # sort similarities list and get 'k' most similar
     k_biggest = similarities[np.argsort(similarities)[-k:]]
@@ -183,7 +216,6 @@ def k_most_similar_items(ratings, u, i, k):
     return k_most_similar
 
 
-# Item-Item Collaborative Filtering
 def itemCF(ratings, u, i, k):
     numerator = 0
     denominator = 0
@@ -217,36 +249,28 @@ def main():
     test_data_matrix = np.full((n_users, n_items), 0)
 
     # generate (user x movie) ratings matrix
-    print("Generating user x movie ratings matrix")
-    with progressbar.ProgressBar(max_value=len(train_data)) as bar:
-        counter = 0
-        for row in train_data.itertuples():
-            user = getattr(row, "user_id")
-            movie = getattr(row, "movie_id")
-            rating = getattr(row, "rating")
-            train_data_matrix[user-1][movie-1] = rating
-            counter += 1
-            bar.update(counter)
-
-    # split training data into TRAIN and VALIDATION
-
-    # run algorithms with TEST
-    total_time = 0
-    # print("Run ITEM-ITEM-COLLABORATIVE-FILTERING")
-    print("BASELINE")
-    for row in test_data.itertuples():
+    for row in train_data.itertuples():
         user = getattr(row, "user_id")
         movie = getattr(row, "movie_id")
-        movie_name = movies_data['title'][movie-1]
+        rating = getattr(row, "rating")
+        train_data_matrix[user-1][movie-1] = rating
+
+    # run algorithms with testing data
+    total_time = 0
+    for row in test_data.itertuples():
+        id = getattr(row, "id")
+        user = getattr(row, "user_id")
+        movie = getattr(row, "movie_id")
+        # movie_name = movies_data['title'][movie-1]
         # run recommendation algorithms for (u, i)
         start = timer()
-        # prediction = itemCF(train_data_matrix, user-1, movie-1, 20)
         prediction = baseline(train_data_matrix, user-1, movie-1)
-        print("pred({},{}) = {}".format(user, movie_name, prediction))
+        print("{}, {}".format(id, prediction))
         end = timer()
-        print("Elapsed time: {}s".format(end - start))
+        # print("Elapsed time: {}s".format(end - start))
         total_time += (end-start)
     print("TOTAL TIME: {}s".format(total_time))
+
 
 if __name__ == '__main__':
     try:
@@ -256,6 +280,5 @@ if __name__ == '__main__':
         pass
     else:
         import sys
-        import textwrap
         sys.excepthook = IPython.core.ultratb.ColorTB()
         main()
