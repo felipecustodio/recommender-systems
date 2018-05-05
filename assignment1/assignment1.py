@@ -43,8 +43,8 @@ def SVD(ratings, user, item):
 def global_average(ratings):
     size = 0
     total = 0
-    for user_rating in ratings:
-        for rating in user_rating:
+    for row in ratings:
+        for rating in row:
             if (rating != 0):
                 total += rating
                 size += 1
@@ -106,7 +106,7 @@ def bayes_method(ratings, user, item):
 # RF-REC #
 ###########
 
-def rf_rec(ratings, user, item):
+def RF_Rec(ratings, user, item):
     # get all user and item ratings
     user_ratings = ratings[user]
     item_ratings = ratings[:, item]
@@ -179,6 +179,7 @@ def similarity_item(ratings, i, j):
         # no users found, set similarity to least possible
         similarity = 0
     if (similarity < 0):
+        # round up to avoid floating errors
         similarity = 0
     return similarity
 
@@ -241,10 +242,9 @@ def main():
     users_data = pandas.read_csv("csv/users_data.csv")
     submit_file = pandas.read_csv("csv/submit_file.csv")
 
-    # initialize our data matrix
+    # initialize our data matrix (0 = unknown rating)
     n_users = train_data['user_id'].max()
     n_items = movies_data['movie_id'].max()
-    # unknown ratings are filled with 0
     train_data_matrix = np.full((n_users, n_items), 0)
     test_data_matrix = np.full((n_users, n_items), 0)
 
@@ -255,17 +255,43 @@ def main():
         rating = getattr(row, "rating")
         train_data_matrix[user-1][movie-1] = rating
 
-    # run algorithms with testing data
+    # generate (item x item) similarities matrix
+    # print("generate similarities matrix")
+    # similarities = np.full((n_items, n_items), 0)
+    # with progressbar.ProgressBar(max_value=(n_items * n_items)) as bar:
+    #     counter = 0
+    #     for movie in range(n_items):
+    #         for movie2 in range(n_items):
+    #             if (movie != movie2):
+    #                 similarities[movie][movie2] = similarity_item(train_data_matrix, movie, movie2)
+    #                 counter += 1
+    #                 bar.update(counter)
+    # print("Saving to file...")
+    # np.savetxt("similarities.csv", similarities, delimiter=",")
+
+    # split training data into TRAIN and VALIDATION
+
+    # run algorithms with TEST
     total_time = 0
     for row in test_data.itertuples():
         id = getattr(row, "id")
         user = getattr(row, "user_id")
         movie = getattr(row, "movie_id")
-        # movie_name = movies_data['title'][movie-1]
+        movie_name = movies_data['title'][movie-1]
         # run recommendation algorithms for (u, i)
         start = timer()
-        prediction = baseline(train_data_matrix, user-1, movie-1)
+        prediction = itemCF(train_data_matrix, user-1, movie-1, 20)
+        print("Item-Item CF: ", end='')
         print("{}, {}".format(id, prediction))
+
+        prediction = baseline(train_data_matrix, user-1, movie-1)
+        print("Baseline: ", end='')
+        print("{}, {}".format(id, prediction))
+
+        prediction = RF_Rec(train_data_matrix, user-1, movie-1)
+        print("RF-Rec: ", end='')
+        print("{}, {}".format(id, prediction))
+
         end = timer()
         # print("Elapsed time: {}s".format(end - start))
         total_time += (end-start)
