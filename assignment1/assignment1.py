@@ -16,6 +16,8 @@ from termcolor import colored
 import pandas
 import csv
 import numpy as np
+from sklearn.metrics import mean_squared_error
+from math import sqrt
 import matplotlib.pyplot as plt
 import seaborn as sns
 
@@ -241,6 +243,10 @@ def itemCF(ratings, u, i, k):
 ########
 # MAIN #
 ########
+def rmse(rating, prediction):
+    rmse = sqrt(mean_squared_error(rating, prediction))
+
+
 def error_check(prediction, id):
     if (prediction < 1 or prediction > 5):
         text = colored('ERROR: ', 'red', attrs=['reverse', 'blink'])
@@ -304,9 +310,8 @@ def main():
     results_writer = csv.writer(results_csv, delimiter=',', quotechar='|', quoting=csv.QUOTE_MINIMAL)
     results_writer.writerow(['id', 'rating'])
 
-    # run algorithm with test_data
+    # run tests and write to results csv
     counter = 0
-    times = np.zeros((3970))
     print("Calculatig predictions...")
     with progressbar.ProgressBar(max_value=3970) as bar:
         for row in test_data.itertuples():
@@ -314,7 +319,6 @@ def main():
             user = getattr(row, "user_id")
             movie = getattr(row, "movie_id")
             # run chosen recommendation algorithm for (u, i)
-            start = timer()
             if (method == 1):
                 prediction = itemCF(ratings, user-1, movie-1, 20)
                 error_check(prediction, id)
@@ -331,33 +335,137 @@ def main():
                 prediction = SVD(ratings, user-1, movie-1)
                 error_check(prediction, id)
             elif (method == 6):
-                prediction = SGD(ratings, user-1, movie-1)'
+                prediction = SGD(ratings, user-1, movie-1)
                 error_check(prediction, id)
 
-            # profiling
-            end = timer()
-            time_elapsed = end - start
-            times[counter] = time_elapsed
-
-            # write results in CSV
-            # results_writer.writerow([id, prediction, time_elapsed])
+            # write results to csv
             results_writer.writerow([id, prediction])
             counter += 1
             bar.update(counter)
 
+    print("Code profiling...")
+    # code profiling
+    # plot performance: time elapsed for each prediction and rmse
+    times = {}
+    times["itemcf"] = []
+    times["baseline"] = []
+    times["rfrec"] = []
+    times["bayes"] = []
+    times["svd"] = []
+    times["sgd"] = []
+
+    rmse = {}
+    rmse["itemcf"] = []
+    rmse["baseline"] = []
+    rmse["rfrec"] = []
+    rmse["bayes"] = []
+    rmse["svd"] = []
+    rmse["sgd"] = []
+
+    counter = 0
+    with progressbar.ProgressBar(max_value=3970) as bar:
+        for row in train_data.itertuples():
+            id = getattr(row, "id")
+            user = getattr(row, "user_id")
+            movie = getattr(row, "movie_id")
+            rating = getattr(row, "rating")
+
+            start = timer()
+            prediction = itemCF(ratings, user-1, movie-1, 20)
+            end = timer()
+            time_elapsed = end - start
+            times["itemcf"].append(time_elapsed)
+            rmse["itemcf"].append(rmse(rating, prediction))
+
+            start = timer()
+            prediction = baseline(ratings, user-1, movie-1, global_avg)
+            end = timer()
+            time_elapsed = end - start
+            times["baseline"].append(time_elapsed)
+            rmse["baseline"].append(rmse(rating, prediction))
+
+            start = timer()
+            prediction = RF_Rec(ratings, user-1, movie-1)
+            end = timer()
+            time_elapsed = end - start
+            times["rfrec"].append(time_elapsed)
+            rmse["rfrec"].append(rmse(rating, prediction))
+
+            start = timer()
+            prediction = bayes_method(ratings, user-1, movie-1)
+            end = timer()
+            time_elapsed = end - start
+            times["bayes"].append(time_elapsed)
+            rmse["bayes"].append(rmse(rating, prediction))
+
+            start = timer()
+            prediction = SVD(ratings, user-1, movie-1)
+            end = timer()
+            time_elapsed = end - start
+            times["svd"].append(time_elapsed)
+            rmse["svd"].append(rmse(rating, prediction))
+
+            start = timer()
+            prediction = SGD(ratings, user-1, movie-1)
+            end = timer()
+            time_elapsed = end - start
+            times["sgd"].append(time_elapsed)
+            rmse["sgd"].append(rmse(rating, prediction))
+
+            counter += 1
+            bar.update(counter)
+
+
+    # colors (FLATUI)
+    # #f1c40f
+    # #c0392b
+    # #2c3e50
+    # #2980b9
+    # #27ae60
+    # #bdc3c7
+
     print("Plotting time elapsed...")
     sns.set()
     # plot time for each iteration
-    plt.scatter(np.arange(3970), times, label='Time elapsed', c="#F67280", s=1)
-    # plt.axis("off")
+    plt.scatter(range(len(times["itemcf"])), times["itemcf"], s=1)
+    plt.scatter(range(len(times["baseline"])), times["baseline"], s=1)
+    plt.scatter(range(len(times["rfrec"])), times["rfrec"], s=1)
+    plt.scatter(range(len(times["bayes"])), times["bayes"], s=1)
+    plt.scatter(range(len(times["svd"])), times["svd"], s=1)
+    plt.scatter(range(len(times["sgd"])), times["sgd"], s=1)
+
+    plt.axis("off")
     plt.xlabel("Test case (ID)")
     plt.ylabel("Time elapsed (seconds)")
-    plt.title(results_filename)
-    figure = plt.gcf()  # get current figure
-    # 800 x 600
+    plt.title("Time elapsed")
+
+    # get current figure
+    figure = plt.gcf()
+    # # 800 x 600
     figure.set_size_inches(8, 6)
-    # save with high DPI
-    plt.savefig("plots/time_" + results_filename + ".png", dpi=100)
+    # # save with high DPI
+    plt.savefig("plots/time_elapsed.png", dpi=100)
+
+    print("Plotting RMSE...")
+    sns.set()
+    # plot time for each iteration
+    plt.scatter(range(len(rmse["itemcf"])), rmse["itemcf"], s=1)
+    plt.scatter(range(len(rmse["baseline"])), rmse["baseline"], s=1)
+    plt.scatter(range(len(rmse["rfrec"])), rmse["rfrec"], s=1)
+    plt.scatter(range(len(rmse["bayes"])), rmse["bayes"], s=1)
+    plt.scatter(range(len(rmse["svd"])), rmse["svd"], s=1)
+    plt.scatter(range(len(rmse["sgd"])), rmse["sgd"], s=1)
+
+    plt.axis("off")
+    plt.xlabel("Test case (ID)")
+    plt.ylabel("RMSE")
+    plt.title("RMSE")
+
+    figure = plt.gcf()  # get current figure
+    # # 800 x 600
+    figure.set_size_inches(8, 6)
+    # # save with high DPI
+    plt.savefig("plots/rmse.png", dpi=100)
 
 
 if __name__ == '__main__':
