@@ -11,8 +11,10 @@ Student: Felipe Scrochio Custódio - 9442688
 
 import progressbar
 from timeit import default_timer as timer
+from termcolor import colored
 
 import pandas
+import csv
 import numpy as np
 import matplotlib.pyplot as plt
 import seaborn as sns
@@ -21,7 +23,6 @@ import seaborn as sns
 ###############################
 # STOCHASTIC GRADIENT DESCENT #
 ###############################
-
 def SGD(ratings, user, item):
     pass
 
@@ -29,7 +30,6 @@ def SGD(ratings, user, item):
 ###############################
 # MATRIX DECOMPOSITION (SVD)  #
 ###############################
-
 def SVD(ratings, user, item):
     u, s, v = np.linalg.svd(ratings)
     # prediction with absolute ratings
@@ -39,7 +39,6 @@ def SVD(ratings, user, item):
 ###################
 # BASELINE METHOD #
 ###################
-
 def global_average(ratings):
     size = 0
     total = 0
@@ -52,11 +51,19 @@ def global_average(ratings):
 
 
 def bias_item(ratings, item, global_avg):
-    item_ratings = ratings[:, item]
-    bias = sum(item_ratings) - global_avg
+    # item_ratings = ratings[:, item]
+    bias = 0
     Ri = 0
-    Ri = sum(1 for i in range(len(item_ratings)) if item_ratings[i] != 0)
-    bias = bias / Ri
+    # for rating in item_ratings:
+        # bias += rating - global_avg
+    for i in range(len(ratings)):
+        bias += ratings[i][item] - global_avg
+        Ri += 1
+    if (Ri == 0):
+        # no other ratings for this item
+        bias = global_avg
+    else:
+        bias = bias / abs(Ri)
     return bias
 
 
@@ -73,12 +80,12 @@ def bias_user(ratings, user, global_avg):
         # no other items were rated
         bias = global_avg
     else:
-        bias = bias / Ru
+        bias = bias / abs(Ru)
     return bias
 
 
-def baseline(ratings, user, item):
-    u = global_average(ratings)
+def baseline(ratings, user, item, global_avg):
+    u = global_avg
     bu = bias_user(ratings, user, u)
     bi = bias_item(ratings, item, u)
     rui = u + bi + bu
@@ -88,6 +95,9 @@ def baseline(ratings, user, item):
 ########################
 # PROBABILISTIC METHOD #
 ########################
+def probability(ratings, item, rating):
+    pass
+
 
 def bayes_method(ratings, user, item):
     probabilities = [0, 0, 0, 0, 0]
@@ -105,7 +115,6 @@ def bayes_method(ratings, user, item):
 ###########
 # RF-REC #
 ###########
-
 def RF_Rec(ratings, user, item):
     # get all user and item ratings
     user_ratings = ratings[user]
@@ -133,7 +142,6 @@ def RF_Rec(ratings, user, item):
 #####################################
 # ITEM-ITEM COLLABORATIVE FILTERING #
 #####################################
-
 def user_mean_ratings(ratings, user):
     # get only existing ratings
     # filter unknown values (0)
@@ -233,69 +241,112 @@ def itemCF(ratings, u, i, k):
 ########
 # MAIN #
 ########
-
 def main():
+
+    text = colored('Recommender Systems - Assignment 1', 'white', attrs=['reverse', 'blink'])
+    print(text)
+
+    # choose algorithm
+    print("\nChoose recommendation algorithm: ")
+    print("\t 1 - Item-Item Collaborative Filtering")
+    print("\t 2 - Baseline")
+    print("\t 3 - RF-Rec")
+    print("\t 4 - Bayes")
+    print("\t 5 - SVD")
+    print("\t 6 - SGD")
+    print("::: ", end='')
+    method = int(input())
+
     # read dataset
+    print("\nLoading dataset...")
     movies_data = pandas.read_csv("csv/movies_data.csv")
     test_data = pandas.read_csv("csv/test_data.csv")
     train_data = pandas.read_csv("csv/train_data.csv")
-    users_data = pandas.read_csv("csv/users_data.csv")
-    submit_file = pandas.read_csv("csv/submit_file.csv")
 
     # initialize our data matrix (0 = unknown rating)
     n_users = train_data['user_id'].max()
     n_items = movies_data['movie_id'].max()
-    train_data_matrix = np.full((n_users, n_items), 0)
-    test_data_matrix = np.full((n_users, n_items), 0)
+    ratings = np.full((n_users, n_items), 0)
 
     # generate (user x movie) ratings matrix
+    print("Generating user x movie ratings matrix...")
     for row in train_data.itertuples():
         user = getattr(row, "user_id")
         movie = getattr(row, "movie_id")
         rating = getattr(row, "rating")
-        train_data_matrix[user-1][movie-1] = rating
+        ratings[user-1][movie-1] = rating
 
-    # generate (item x item) similarities matrix
-    # print("generate similarities matrix")
-    # similarities = np.full((n_items, n_items), 0)
-    # with progressbar.ProgressBar(max_value=(n_items * n_items)) as bar:
-    #     counter = 0
-    #     for movie in range(n_items):
-    #         for movie2 in range(n_items):
-    #             if (movie != movie2):
-    #                 similarities[movie][movie2] = similarity_item(train_data_matrix, movie, movie2)
-    #                 counter += 1
-    #                 bar.update(counter)
-    # print("Saving to file...")
-    # np.savetxt("similarities.csv", similarities, delimiter=",")
+    print("Calculating global average for ratings...")
+    global_avg = global_average(ratings)
 
-    # split training data into TRAIN and VALIDATION
-
-    # run algorithms with TEST
-    total_time = 0
-    for row in test_data.itertuples():
-        id = getattr(row, "id")
-        user = getattr(row, "user_id")
-        movie = getattr(row, "movie_id")
-        movie_name = movies_data['title'][movie-1]
-        # run recommendation algorithms for (u, i)
-        start = timer()
-        prediction = itemCF(train_data_matrix, user-1, movie-1, 20)
-        print("Item-Item CF: ", end='')
-        print("{}, {}".format(id, prediction))
-
-        prediction = baseline(train_data_matrix, user-1, movie-1)
-        print("Baseline: ", end='')
-        print("{}, {}".format(id, prediction))
-
-        prediction = RF_Rec(train_data_matrix, user-1, movie-1)
-        print("RF-Rec: ", end='')
-        print("{}, {}".format(id, prediction))
-
-        end = timer()
-        # print("Elapsed time: {}s".format(end - start))
-        total_time += (end-start)
-    print("TOTAL TIME: {}s".format(total_time))
+    # name results CSV
+    # if (method == 1):
+    #     results_filename = "itemCF"
+    # elif (method == 2):
+    #     results_filename = "baseline"
+    # elif (method == 3):
+    #     results_filename = "rfrec"
+    # elif (method == 4):
+    #     results_filename = "bayes"
+    # elif (method == 5):
+    #     results_filename = "svd"
+    # elif (method == 6):
+    #     results_filename = "sgd"
+    #
+    # # write results CSV header
+    # results_csv = open('results/' + results_filename + '.csv', 'w', newline='')
+    # results_writer = csv.writer(results_csv, delimiter=',', quotechar='|', quoting=csv.QUOTE_MINIMAL)
+    # # results_writer.writerow(['id', 'rating', 'time'])
+    # results_writer.writerow(['id', 'rating'])
+    #
+    # # run algorithm with test_data
+    # counter = 0
+    # times = np.zeros((3970))
+    # print("Calculatig predictions...")
+    # with progressbar.ProgressBar(max_value=3970) as bar:
+    #     for row in test_data.itertuples():
+    #         id = getattr(row, "id")
+    #         user = getattr(row, "user_id")
+    #         movie = getattr(row, "movie_id")
+    #         # run recommendation algorithm for (u, i)
+    #         start = timer()
+    #         if (method == 1):
+    #             prediction = itemCF(ratings, user-1, movie-1, 20)
+    #         elif (method == 2):
+    #             prediction = baseline(ratings, user-1, movie-1, global_avg)
+    #         elif (method == 3):
+    #             prediction = RF_Rec(ratings, user-1, movie-1)
+    #         elif (method == 4):
+    #             prediction = bayes_method(ratings, user-1, movie-1)
+    #         elif (method == 5):
+    #             prediction = SVD(ratings, user-1, movie-1)
+    #         elif (method == 6):
+    #             prediction = SGD(ratings, user-1, movie-1)
+    #
+    #         # profiling
+    #         end = timer()
+    #         time_elapsed = end - start
+    #         times[counter] = time_elapsed
+    #
+    #         # write results in CSV
+    #         # results_writer.writerow([id, prediction, time_elapsed])
+    #         results_writer.writerow([id, prediction])
+    #         counter += 1
+    #         bar.update(counter)
+    #
+    # print("Plotting time elapsed...")
+    # sns.set()
+    # # plot time for each iteration
+    # plt.scatter(np.arange(3970), times, label='Time elapsed', c="#F67280", s=1)
+    # # plt.axis("off")
+    # plt.xlabel("Test case (ID)")
+    # plt.ylabel("Time elapsed (seconds)")
+    # plt.title(results_filename)
+    # figure = plt.gcf()  # get current figure
+    # # 800 x 600
+    # figure.set_size_inches(8, 6)
+    # # save with high DPI
+    # plt.savefig("plots/time_" + results_filename + ".png", dpi=100)
 
 
 if __name__ == '__main__':
