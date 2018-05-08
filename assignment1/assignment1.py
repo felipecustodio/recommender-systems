@@ -15,8 +15,8 @@ from termcolor import colored
 
 import pandas
 import csv
+import math
 import numpy as np
-from sklearn.metrics import mean_squared_error
 from math import sqrt
 import matplotlib.pyplot as plt
 import seaborn as sns
@@ -53,11 +53,8 @@ def global_average(ratings):
 
 
 def bias_item(ratings, item, global_avg):
-    # item_ratings = ratings[:, item]
     bias = 0
     Ri = 0
-    # for rating in item_ratings:
-        # bias += rating - global_avg
     for i in range(len(ratings)):
         bias += ratings[i][item] - global_avg
         Ri += 1
@@ -147,8 +144,14 @@ def RF_Rec(ratings, user, item):
 def user_mean_ratings(ratings, user):
     # get only existing ratings
     # filter unknown values (0)
-    existing_ratings = list(filter(lambda a: a != 0, ratings[user]))
-    mean = np.average(existing_ratings)
+    user_ratings = ratings[user]
+    total = 0
+    sum = 0
+    for rating in user_ratings:
+        if (rating != 0):
+            sum += rating
+            total += 1
+    mean = (sum / total)
     return mean
 
 
@@ -196,7 +199,7 @@ def similarity_item(ratings, i, j):
 
 def k_most_similar_items(ratings, u, i, k):
     # similarity list has size 'number of items'
-    similarities = np.full((ratings.shape[1]), -1, dtype=float)
+    similarities = np.full((ratings.shape[1]), 0, dtype=float)
     # items that user 'u' rated
     user_ratings = ratings[u]
 
@@ -206,7 +209,6 @@ def k_most_similar_items(ratings, u, i, k):
         # filter items that user did not rate
         if (rating != 0):
             similarities[movie_id] = similarity_item(ratings, i, movie_id)
-            # similarities[movie_id] = similarities_matrix[i][movie_id]
 
     # sort similarities list and get 'k' most similar
     k_biggest = similarities[np.argsort(similarities)[-k:]]
@@ -227,6 +229,13 @@ def k_most_similar_items(ratings, u, i, k):
     return k_most_similar
 
 
+def scale_range(input, min, max):
+    input += -(np.min(input))
+    input /= np.max(input) / (max - min)
+    input += min
+    return input
+
+
 def itemCF(ratings, u, i, k):
     numerator = 0
     denominator = 0
@@ -237,6 +246,12 @@ def itemCF(ratings, u, i, k):
         numerator += similarity * ratings[u][movie_id]
         denominator += similarity
     prediction = (numerator / denominator)
+    # normalize if values didn't reach required range
+    if (prediction < 1 or prediction > 5):
+        prediction = scale_range(prediction, 1, 5)
+    # if it fails terribly, return the average for that item
+    if (math.isnan(prediction)):
+        prediction = np.average(ratings[:, i])
     return prediction
 
 
@@ -244,17 +259,17 @@ def itemCF(ratings, u, i, k):
 # MAIN #
 ########
 def rmse(rating, prediction):
-    rmse = sqrt(mean_squared_error(rating, prediction))
+    rmse = sqrt(((rating - prediction) ** 2).mean(axis=None))
+    return rmse
 
 
 def error_check(prediction, id):
-    if (prediction < 1 or prediction > 5):
+    if (prediction < 1 or prediction > 5 or math.isnan(prediction)):
         text = colored('ERROR: ', 'red', attrs=['reverse', 'blink'])
-        print(text + "prediction {} on id {}".format(prediction, id))
+        print(text + "prediction {} at position {}".format(prediction, id))
 
 
 def main():
-
     text = colored('Recommender Systems - Assignment 1', 'white', attrs=['reverse', 'blink'])
     print(text)
 
@@ -266,6 +281,7 @@ def main():
     print("\t 4 - Bayes")
     print("\t 5 - SVD")
     print("\t 6 - SGD")
+    print("\t 7 - Code profiling only")
     print("::: ", end='')
     method = int(input())
 
@@ -293,25 +309,28 @@ def main():
 
     # name results CSV
     if (method == 1):
-        results_filename = "itemCF"
+        algorithm = "itemCF"
     elif (method == 2):
-        results_filename = "baseline"
+        algorithm = "baseline"
     elif (method == 3):
-        results_filename = "rfrec"
+        algorithm = "rfrec"
     elif (method == 4):
-        results_filename = "bayes"
+        algorithm = "bayes"
     elif (method == 5):
-        results_filename = "svd"
+        algorithm = "svd"
     elif (method == 6):
-        results_filename = "sgd"
+        algorithm = "sgd"
+    elif (method == 7):
+        algorithm = "null"
 
     # write results CSV header
-    results_csv = open('results/' + results_filename + '.csv', 'w', newline='')
+    results_csv = open('results/' + algorithm + '.csv', 'w', newline='')
     results_writer = csv.writer(results_csv, delimiter=',', quotechar='|', quoting=csv.QUOTE_MINIMAL)
     results_writer.writerow(['id', 'rating'])
 
     # run tests and write to results csv
     counter = 0
+    times = []
     print("Calculatig predictions...")
     with progressbar.ProgressBar(max_value=3970) as bar:
         for row in test_data.itertuples():
@@ -319,6 +338,7 @@ def main():
             user = getattr(row, "user_id")
             movie = getattr(row, "movie_id")
             # run chosen recommendation algorithm for (u, i)
+            start = timer()
             if (method == 1):
                 prediction = itemCF(ratings, user-1, movie-1, 20)
                 error_check(prediction, id)
@@ -337,11 +357,32 @@ def main():
             elif (method == 6):
                 prediction = SGD(ratings, user-1, movie-1)
                 error_check(prediction, id)
+            elif (method == 7):
+                pass
 
+            end = timer()
+            time_elapsed = end - start
+            times.append(time_elapsed)
             # write results to csv
-            results_writer.writerow([id, prediction])
+            if (method != 7):
+                results_writer.writerow([id, prediction])
             counter += 1
             bar.update(counter)
+
+    print("Plotting time elapsed...")
+    sns.set()
+    # plot time for each iteration
+    plt.scatter(range(len(times)), times, s=1, c="#F67280")
+    plt.xlabel("Test case (ID)")
+    plt.ylabel("Time elapsed (seconds)")
+    plt.title(algorithm)
+    # get current figure
+    figure = plt.gcf()
+    # # 800 x 600
+    figure.set_size_inches(8, 6)
+    # # save with high DPI
+    plt.savefig("plots/time_" + algorithm + ".png", dpi=100)
+    plt.clf()
 
     print("Code profiling...")
     # code profiling
@@ -354,87 +395,85 @@ def main():
     times["svd"] = []
     times["sgd"] = []
 
-    rmse = {}
-    rmse["itemcf"] = []
-    rmse["baseline"] = []
-    rmse["rfrec"] = []
-    rmse["bayes"] = []
-    rmse["svd"] = []
-    rmse["sgd"] = []
+    rmses = {}
+    rmses["itemcf"] = []
+    rmses["baseline"] = []
+    rmses["rfrec"] = []
+    rmses["bayes"] = []
+    rmses["svd"] = []
+    rmses["sgd"] = []
 
     counter = 0
-    with progressbar.ProgressBar(max_value=3970) as bar:
-        for row in train_data.itertuples():
-            id = getattr(row, "id")
+    print("Split train data size: ", end='')
+    split_size = int(input())
+    train_split = train_data.tail(split_size)
+    with progressbar.ProgressBar(max_value=split_size) as bar:
+        for row in train_split.itertuples():
+            # id = getattr(row, "id")
             user = getattr(row, "user_id")
             movie = getattr(row, "movie_id")
             rating = getattr(row, "rating")
 
             start = timer()
             prediction = itemCF(ratings, user-1, movie-1, 20)
+            error_check(prediction, counter)
             end = timer()
             time_elapsed = end - start
             times["itemcf"].append(time_elapsed)
-            rmse["itemcf"].append(rmse(rating, prediction))
+            rmses["itemcf"].append(rmse(rating, prediction))
 
             start = timer()
             prediction = baseline(ratings, user-1, movie-1, global_avg)
+            error_check(prediction, counter)
             end = timer()
             time_elapsed = end - start
             times["baseline"].append(time_elapsed)
-            rmse["baseline"].append(rmse(rating, prediction))
+            rmses["baseline"].append(rmse(rating, prediction))
 
             start = timer()
             prediction = RF_Rec(ratings, user-1, movie-1)
+            error_check(prediction, counter)
             end = timer()
             time_elapsed = end - start
             times["rfrec"].append(time_elapsed)
-            rmse["rfrec"].append(rmse(rating, prediction))
+            rmses["rfrec"].append(rmse(rating, prediction))
 
-            start = timer()
-            prediction = bayes_method(ratings, user-1, movie-1)
-            end = timer()
-            time_elapsed = end - start
-            times["bayes"].append(time_elapsed)
-            rmse["bayes"].append(rmse(rating, prediction))
+            # start = timer()
+            # prediction = bayes_method(ratings, user-1, movie-1)
+            # end = timer()
+            # time_elapsed = end - start
+            # times["bayes"].append(time_elapsed)
+            # rmse["bayes"].append(rmse(rating, prediction))
 
-            start = timer()
-            prediction = SVD(ratings, user-1, movie-1)
-            end = timer()
-            time_elapsed = end - start
-            times["svd"].append(time_elapsed)
-            rmse["svd"].append(rmse(rating, prediction))
+            # start = timer()
+            # prediction = SVD(ratings, user-1, movie-1)
+            # end = timer()
+            # time_elapsed = end - start
+            # times["svd"].append(time_elapsed)
+            # rmse["svd"].append(rmse(rating, prediction))
 
-            start = timer()
-            prediction = SGD(ratings, user-1, movie-1)
-            end = timer()
-            time_elapsed = end - start
-            times["sgd"].append(time_elapsed)
-            rmse["sgd"].append(rmse(rating, prediction))
+            # start = timer()
+            # prediction = SGD(ratings, user-1, movie-1)
+            # end = timer()
+            # time_elapsed = end - start
+            # times["sgd"].append(time_elapsed)
+            # rmse["sgd"].append(rmse(rating, prediction))
 
             counter += 1
             bar.update(counter)
 
 
     # colors (FLATUI)
-    # #f1c40f
-    # #c0392b
-    # #2c3e50
-    # #2980b9
-    # #27ae60
-    # #bdc3c7
-
     print("Plotting time elapsed...")
-    sns.set()
     # plot time for each iteration
-    plt.scatter(range(len(times["itemcf"])), times["itemcf"], s=1)
-    plt.scatter(range(len(times["baseline"])), times["baseline"], s=1)
-    plt.scatter(range(len(times["rfrec"])), times["rfrec"], s=1)
-    plt.scatter(range(len(times["bayes"])), times["bayes"], s=1)
-    plt.scatter(range(len(times["svd"])), times["svd"], s=1)
-    plt.scatter(range(len(times["sgd"])), times["sgd"], s=1)
+    plt.scatter(range(len(times["itemcf"])), times["itemcf"], s=4, c="#f1c40f", label="item-item CF")
+    plt.scatter(range(len(times["baseline"])), times["baseline"], s=4, c="#c0392b", label="Baseline")
+    plt.scatter(range(len(times["rfrec"])), times["rfrec"], s=4, c="#2c3e50", label="RF-Rec")
+    # plt.scatter(range(len(times["bayes"])), times["bayes"], s=4, c="#2980b9")
+    # plt.scatter(range(len(times["svd"])), times["svd"], s=4, c="#27ae60")
+    # plt.scatter(range(len(times["sgd"])), times["sgd"], s=4, c="#bdc3c7")
 
-    plt.axis("off")
+    plt.legend()
     plt.xlabel("Test case (ID)")
     plt.ylabel("Time elapsed (seconds)")
     plt.title("Time elapsed")
@@ -445,18 +484,19 @@ def main():
     figure.set_size_inches(8, 6)
     # # save with high DPI
     plt.savefig("plots/time_elapsed.png", dpi=100)
+    plt.clf()
 
     print("Plotting RMSE...")
-    sns.set()
+    # sns.set()
     # plot time for each iteration
-    plt.scatter(range(len(rmse["itemcf"])), rmse["itemcf"], s=1)
-    plt.scatter(range(len(rmse["baseline"])), rmse["baseline"], s=1)
-    plt.scatter(range(len(rmse["rfrec"])), rmse["rfrec"], s=1)
-    plt.scatter(range(len(rmse["bayes"])), rmse["bayes"], s=1)
-    plt.scatter(range(len(rmse["svd"])), rmse["svd"], s=1)
-    plt.scatter(range(len(rmse["sgd"])), rmse["sgd"], s=1)
+    plt.scatter(range(len(rmses["itemcf"])), rmses["itemcf"], s=4, c="#f1c40f", label="item-item CF")
+    plt.scatter(range(len(rmses["baseline"])), rmses["baseline"], s=4, c="#c0392b", label="Baseline")
+    plt.scatter(range(len(rmses["rfrec"])), rmses["rfrec"], s=4, c="#2c3e50", label="RF-Rec")
+    # plt.scatter(range(len(rmses["bayes"])), rmses["bayes"], s=4, c="#2980b9")
+    # plt.scatter(range(len(rmses["svd"])), rmses["svd"], s=4, c="#27ae60")
+    # plt.scatter(range(len(rmses["sgd"])), rmses["sgd"], s=4, c="#bdc3c7")
 
-    plt.axis("off")
+    plt.legend()
     plt.xlabel("Test case (ID)")
     plt.ylabel("RMSE")
     plt.title("RMSE")
