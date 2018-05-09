@@ -91,9 +91,9 @@ def baseline(ratings, user, item, global_avg):
     return rui
 
 
-########################
-# PROBABILISTIC METHOD #
-########################
+#########################
+# PROBABILISTIC (BAYES) #
+#########################
 def probability(ratings, item, rating):
     pass
 
