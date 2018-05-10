@@ -30,17 +30,26 @@ def SGD(ratings, user, item):
 
 
 ###############################
-# MATRIX DECOMPOSITION (SVD)  #
+#             SVD             #
 ###############################
-def SVD(ratings, user, item):
-    u, s, v = np.linalg.svd(ratings)
-    # prediction with absolute ratings
-    # prediction with relative ratings
+def SVD_prediction(P, S, Q, user, movie, k):
+    prediction = 0
+    for i in range(k):
+        prediction += P[user][i] * S[i] * Q[i][item - 1]
+    return prediction
+
+def SVD(ratings, user, item, k):
+    # matrix decomposition
+    P, S, Q = np.linalg.svd(ratings)
+    P = P[, :k]
+    S = S[, :k]
+    Q = Q[, :k]
 
 
-###################
-# BASELINE METHOD #
-###################
+
+##############################
+#        BASELINE METHOD     #
+##############################
 def global_average(ratings):
     size = 0
     total = 0
@@ -94,21 +103,57 @@ def baseline(ratings, user, item, global_avg):
 #########################
 # PROBABILISTIC (BAYES) #
 #########################
-def probability(ratings, item, rating):
-    pass
-
-
 def bayes_method(ratings, user, item):
-    probabilities = [0, 0, 0, 0, 0]
+    # all ratings for given user
+    user_ratings = ratings[user]
+    # all ratings for given item
+    item_ratings = ratings[:, item]
 
-    for i in range(1, 6):
-        # P(Y)
-        # P(item i = 1)
-        # P(item i = 2)
-        # P(item i = 3)
-        # P(item i = 4)
-        # P(item i = 5)
-        pass
+    # final probability
+    probability = [0, 0, 0, 0, 0]
+
+    # hypothesis:
+    # probability for rating (1-5)
+    probability_of_rating = [0, 0, 0, 0, 0]
+
+    # ratings frequency for given item
+    ratings_frequencies_item = [0, 0, 0, 0, 0]
+
+    # calculate frequency for ratings (for given item)
+    for rating in item_ratings:
+        # rating is in range (1-5), represented by indexes (0-4)
+        ratings_frequencies_item[rating - 1] += 1
+
+    # calculate probability of each rating for given item
+    for i in range(5):
+        probability_of_rating[i] = ratings_frequencies_item[i] / sum(ratings_frequencies_item)
+
+    # for every movie that user has rated
+    # calculate the probability of each rating
+    conditional_probabilities = np.zeros((len(user_ratings), 5))
+    for movie, rating in enumerate(user_ratings):
+        item_ratings = ratings[:, movie]
+        for i in range(5):
+            total_frequency = 0
+            # frequency that rating shows for this movie
+            for rating in item_ratings:
+                if (rating == (i+1)):
+                    total_frequency += 1
+            # conditional probability = frequency of rating for
+            # desired item i / frequency of rating for item j
+            if (total_frequency > 0):
+                conditional_probabilities[movie][i] = ratings_frequencies_item[i] / total_frequency
+            else:
+                conditional_probabilities[movie][i] = 0
+
+    # probability of rating i = probability of rating i
+    # for desired item * product of conditional probabilities for rating i
+    for i in range(5):
+        productory = np.prod(conditional_probabilities[:, i])
+        probability[i] = probability_of_rating[i] * productory
+
+    prediction = np.argmax(probability) +  1
+    return prediction
 
 
 ###########
@@ -131,7 +176,8 @@ def RF_Rec(ratings, user, item):
         for rating in item_ratings:
             if (rating == i):
                 frequencies_item[i-1] += 1
-        # multiply rating frequency for user and item
+        # rating frequency = frequency that user gave
+        # that rating * frequency that item was given that rating
         rui[i-1] = frequencies_user[i-1] * frequencies_item[i-1]
     # pred = arg max freq(user) x freq(item)
     prediction = rui.index(max(rui)) + 1
@@ -281,7 +327,7 @@ def main():
     print("\t 4 - Bayes")
     print("\t 5 - SVD")
     print("\t 6 - SGD")
-    print("\t 7 - Code profiling only")
+    print("\t 7 - Skip to performance report")
     print("::: ", end='')
     method = int(input())
 
@@ -331,7 +377,7 @@ def main():
     # run tests and write to results csv
     counter = 0
     times = []
-    print("Calculatig predictions...")
+    print("Calculating predictions...")
     with progressbar.ProgressBar(max_value=3970) as bar:
         for row in test_data.itertuples():
             id = getattr(row, "id")
@@ -352,7 +398,7 @@ def main():
                 prediction = bayes_method(ratings, user-1, movie-1)
                 error_check(prediction, id)
             elif (method == 5):
-                prediction = SVD(ratings, user-1, movie-1)
+                prediction = SVD(ratings, user-1, movie-1, 5)
                 error_check(prediction, id)
             elif (method == 6):
                 prediction = SGD(ratings, user-1, movie-1)
@@ -438,26 +484,26 @@ def main():
             times["rfrec"].append(time_elapsed)
             rmses["rfrec"].append(rmse(rating, prediction))
 
-            # start = timer()
-            # prediction = bayes_method(ratings, user-1, movie-1)
-            # end = timer()
-            # time_elapsed = end - start
-            # times["bayes"].append(time_elapsed)
-            # rmse["bayes"].append(rmse(rating, prediction))
+            start = timer()
+            prediction = bayes_method(ratings, user-1, movie-1)
+            end = timer()
+            time_elapsed = end - start
+            times["bayes"].append(time_elapsed)
+            rmses["bayes"].append(rmse(rating, prediction))
 
             # start = timer()
             # prediction = SVD(ratings, user-1, movie-1)
             # end = timer()
             # time_elapsed = end - start
             # times["svd"].append(time_elapsed)
-            # rmse["svd"].append(rmse(rating, prediction))
+            # rmses["svd"].append(rmse(rating, prediction))
 
             # start = timer()
             # prediction = SGD(ratings, user-1, movie-1)
             # end = timer()
             # time_elapsed = end - start
             # times["sgd"].append(time_elapsed)
-            # rmse["sgd"].append(rmse(rating, prediction))
+            # rmses["sgd"].append(rmse(rating, prediction))
 
             counter += 1
             bar.update(counter)
@@ -469,9 +515,9 @@ def main():
     plt.scatter(range(len(times["itemcf"])), times["itemcf"], s=4, c="#f1c40f", label="item-item CF")
     plt.scatter(range(len(times["baseline"])), times["baseline"], s=4, c="#c0392b", label="Baseline")
     plt.scatter(range(len(times["rfrec"])), times["rfrec"], s=4, c="#2c3e50", label="RF-Rec")
-    # plt.scatter(range(len(times["bayes"])), times["bayes"], s=4, c="#2980b9")
-    # plt.scatter(range(len(times["svd"])), times["svd"], s=4, c="#27ae60")
-    # plt.scatter(range(len(times["sgd"])), times["sgd"], s=4, c="#bdc3c7")
+    plt.scatter(range(len(times["bayes"])), times["bayes"], s=4, c="#2980b9", label="Bayes")
+    # plt.scatter(range(len(times["svd"])), times["svd"], s=4, c="#27ae60", label="SVD")
+    # plt.scatter(range(len(times["sgd"])), times["sgd"], s=4, c="#bdc3c7", label="SGD")
 
     plt.legend()
     plt.xlabel("Test case (ID)")
@@ -492,9 +538,9 @@ def main():
     plt.scatter(range(len(rmses["itemcf"])), rmses["itemcf"], s=4, c="#f1c40f", label="item-item CF")
     plt.scatter(range(len(rmses["baseline"])), rmses["baseline"], s=4, c="#c0392b", label="Baseline")
     plt.scatter(range(len(rmses["rfrec"])), rmses["rfrec"], s=4, c="#2c3e50", label="RF-Rec")
-    # plt.scatter(range(len(rmses["bayes"])), rmses["bayes"], s=4, c="#2980b9")
-    # plt.scatter(range(len(rmses["svd"])), rmses["svd"], s=4, c="#27ae60")
-    # plt.scatter(range(len(rmses["sgd"])), rmses["sgd"], s=4, c="#bdc3c7")
+    plt.scatter(range(len(rmses["bayes"])), rmses["bayes"], s=4, c="#2980b9", label="Bayes")
+    # plt.scatter(range(len(rmses["svd"])), rmses["svd"], s=4, c="#27ae60", label="SVD")
+    # plt.scatter(range(len(rmses["sgd"])), rmses["sgd"], s=4, c="#bdc3c7", label="SGD")
 
     plt.legend()
     plt.xlabel("Test case (ID)")
