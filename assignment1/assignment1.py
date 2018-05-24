@@ -35,16 +35,13 @@ def SGD(ratings, user, item):
 def SVD_prediction(P, S, Q, user, movie, k):
     prediction = 0
     for i in range(k):
-        prediction += P[user][i] * S[i] * Q[i][item - 1]
+        prediction += P[user][i] * S[i] * Q[i][movie - 1]
     return prediction
 
-def SVD(ratings, user, item, k):
+def SVD(ratings):
     # matrix decomposition
     P, S, Q = np.linalg.svd(ratings)
-    P = P[, :k]
-    S = S[, :k]
-    Q = Q[, :k]
-
+    return P, S, Q
 
 
 ##############################
@@ -353,6 +350,9 @@ def main():
     print("Calculating global average for ratings...")
     global_avg = global_average(ratings)
 
+    print("Calculating SVD...")
+    P, S, Q = SVD(ratings)
+
     # name results CSV
     if (method == 1):
         algorithm = "itemCF"
@@ -398,7 +398,7 @@ def main():
                 prediction = bayes_method(ratings, user-1, movie-1)
                 error_check(prediction, id)
             elif (method == 5):
-                prediction = SVD(ratings, user-1, movie-1, 5)
+                prediction = SVD_prediction(P, S, Q, user-1, movie-1, 5)
                 error_check(prediction, id)
             elif (method == 6):
                 prediction = SGD(ratings, user-1, movie-1)
@@ -491,12 +491,12 @@ def main():
             times["bayes"].append(time_elapsed)
             rmses["bayes"].append(rmse(rating, prediction))
 
-            # start = timer()
-            # prediction = SVD(ratings, user-1, movie-1)
-            # end = timer()
-            # time_elapsed = end - start
-            # times["svd"].append(time_elapsed)
-            # rmses["svd"].append(rmse(rating, prediction))
+            start = timer()
+            prediction = SVD_prediction(P, S, Q, user-1, movie-1, 5)
+            end = timer()
+            time_elapsed = end - start
+            times["svd"].append(time_elapsed)
+            rmses["svd"].append(rmse(rating, prediction))
 
             # start = timer()
             # prediction = SGD(ratings, user-1, movie-1)
@@ -516,7 +516,7 @@ def main():
     plt.scatter(range(len(times["baseline"])), times["baseline"], s=4, c="#c0392b", label="Baseline")
     plt.scatter(range(len(times["rfrec"])), times["rfrec"], s=4, c="#2c3e50", label="RF-Rec")
     plt.scatter(range(len(times["bayes"])), times["bayes"], s=4, c="#2980b9", label="Bayes")
-    # plt.scatter(range(len(times["svd"])), times["svd"], s=4, c="#27ae60", label="SVD")
+    plt.scatter(range(len(times["svd"])), times["svd"], s=4, c="#27ae60", label="SVD")
     # plt.scatter(range(len(times["sgd"])), times["sgd"], s=4, c="#bdc3c7", label="SGD")
 
     plt.legend()
@@ -539,7 +539,7 @@ def main():
     plt.scatter(range(len(rmses["baseline"])), rmses["baseline"], s=4, c="#c0392b", label="Baseline")
     plt.scatter(range(len(rmses["rfrec"])), rmses["rfrec"], s=4, c="#2c3e50", label="RF-Rec")
     plt.scatter(range(len(rmses["bayes"])), rmses["bayes"], s=4, c="#2980b9", label="Bayes")
-    # plt.scatter(range(len(rmses["svd"])), rmses["svd"], s=4, c="#27ae60", label="SVD")
+    plt.scatter(range(len(rmses["svd"])), rmses["svd"], s=4, c="#27ae60", label="SVD")
     # plt.scatter(range(len(rmses["sgd"])), rmses["sgd"], s=4, c="#bdc3c7", label="SGD")
 
     plt.legend()
