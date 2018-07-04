@@ -9,7 +9,6 @@ Professor: Marcelo Manzato
 Students: Felipe Scrochio Custódio - 9442688
           Lucas Antognoni de Castro - 8936951
 """
-
 import pandas
 import csv
 import math
@@ -44,18 +43,29 @@ def jaccard_index(first_movie, second_movie):
 def FBC_kNN_genres(q_id, user, item, neighbors, similarity, data):
     
     user = data.loc[data['user_id'] == user]
-    similar_itens = similarity[item - 1][:]
-    sorted_indexes = np.argsort(similar_itens)[0:neighbors]
+    similar_itens = np.copy(similarity[item - 1, :])
+    sorted_indexes = np.argsort(similar_itens)[-1:-neighbors:-1]
+    
+    # print(similar_itens)
+    # print(similar_itens.shape)
+    # print(sorted_indexes)
 
     sum_a = 0
     sum_b = 0
 
     for index in sorted_indexes:
-        sum_a += similar_itens[index] * user.loc[user['movie_id'] == (index + 1)].rating
-        sum_b += similar_itens[index]
 
-    print("%d,%f"  % (q_id,sum_a / sum_b))
+        rated_movie = user.loc[user['movie_id'] == (index + 1)]
 
+        if rated_movie.empty == False:
+            sum_a += similar_itens[index] * rated_movie.rating.values[0]
+            sum_b += similar_itens[index]
+        
+    if (sum_a == 0) or (sum_b == 0):
+        print("%d, 0"  % (q_id))
+    else:
+        print("%d,%f"  % (q_id,sum_a / sum_b))
+        
 
 # read dataset
 movies_data = pandas.read_csv("csv/movies_data.csv")
@@ -67,26 +77,26 @@ test_data = pandas.read_csv("csv/test_data.csv")
 # results_writer = csv.writer(results_csv, delimiter=',', quotechar='|', quoting=csv.QUOTE_MINIMAL)
 # results_writer.writerow(['id', 'rating'])
 
-
-similarity_matrix = np.zeros((movies_data.shape[0], movies_data.shape[0]))
+movies = np.sort(movies_data.movie_id.unique())
+similarity_matrix = np.zeros((movies[-1], movies[-1]))
 
 for row in movies_data.itertuples():
 
     movie_index = getattr(row, "Index")
     movie_genres = getattr(row, "genres").split('|')
 
-    new_movies = movies_data[movie_index:]
-
-    similarity_matrix[movie_index][movie_index] = 0.0
+    new_movies = movies_data
 
     for new_row in new_movies.itertuples():
         
         new_movie_index = getattr(new_row, "Index")
         new_movie_genres = getattr(new_row, "genres").split('|')
 
-        similarity_matrix[movie_index][new_movie_index] = jaccard_index(movie_genres, new_movie_genres)
-
-
+        if movie_index == new_movie_index:
+            similarity_matrix[movie_index][movie_index] = 0.0
+        else:
+            similarity_matrix[movie_index][new_movie_index] = jaccard_index(movie_genres, new_movie_genres)
+            
 # run algorithm for test cases
 # counter = 0
 # times = []
@@ -134,7 +144,5 @@ for row in test_data.itertuples():
     movie = getattr(row, "movie_id")
 
     # run prediction algorithm
-    prediction = FBC_kNN_genres(id, user, movie, 20, similarity_matrix, train_data)
-    # error_check(prediction, id)
-
+    prediction = FBC_kNN_genres(id, user, movie, 50, similarity_matrix, train_data)
 

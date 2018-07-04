@@ -17,20 +17,18 @@ def jaccard_index(first_movie, second_movie):
 
 
 # read dataset
-movies_data = pandas.read_csv("csv/movies_data.csv")    
-     
-similarity_matrix = np.zeros((movies_data.shape[0], movies_data.shape[0]))
+movies_data = pandas.read_csv("csv/movies_data.csv")         
+movies = np.sort(movies_data.movie_id.unique())
+similarity_matrix = np.zeros((movies[-1], movies[-1]))
 
 for row in movies_data.itertuples():
 
     movie_index = getattr(row, "Index")
     movie_genres = getattr(row, "genres").split('|')
 
-    new_movies = movies_data[movie_index:]
+    new_movies = movies_data
 
     # print(movie_genres)
-
-    similarity_matrix[movie_index][movie_index] = 0.0
 
     for new_row in new_movies.itertuples():
         
@@ -39,9 +37,12 @@ for row in movies_data.itertuples():
 
         # print(new_movie_genres)
 
-        print(movie_index, new_movie_index)
+        # print(movie_index, new_movie_index)
 
-        similarity_matrix[movie_index][new_movie_index] = jaccard_index(movie_genres, new_movie_genres)
+        if movie_index == new_movie_index:
+            similarity_matrix[movie_index][movie_index] = 0.0
+        else:
+            similarity_matrix[movie_index][new_movie_index] = jaccard_index(movie_genres, new_movie_genres)
 
 df = pandas.DataFrame(similarity_matrix)
 df.to_csv("./csv/similarity_genres.csv")
