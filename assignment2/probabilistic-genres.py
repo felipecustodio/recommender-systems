@@ -61,8 +61,8 @@ def naiveBayes(user, movie, train_data, movies_data):
     p_a_v = np.zeros((len(genres), 5))
 
     index = 0
-    for row in attributes.itertuples():
-        for col in range(5):
+    for genre in genres:
+        for rating in range(5):
 
             a = len(data.loc[(data['movie_id'] == row.movie_id) & (data['rating'] == col + 1)])
             b = len(data.loc[(data['movie_id'] == movie) & (data['rating'] == col + 1)])
