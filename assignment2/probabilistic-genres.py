@@ -6,7 +6,9 @@ SCC0284 - Recommender Systems - 2018/1
 Assignment 2
 ICMC - University of Sao Paulo
 Professor Marcelo Manzato
-Student: Felipe Scrochio Custódio - 9442688
+Students:
+Felipe Scrochio Custódio - 9442688
+Lucas Antognoni de Castro - 8936951
 """
 
 import pandas
@@ -26,14 +28,57 @@ Using movie genres
 algorithm = "probabilistic-genres"
 
 
-def probabilistic():
-    pass
+def naiveBayes(user, movie, train_data, movies_data):
 
+    attributes = data.loc[data['user_id'] == user, 'movie_id':'rating']
+    genres = movies_data.loc[movies_data['movie_id'] == movie, 'movie_id':'genres']
+    genres = genres.split('|')
 
-def error_check(prediction, id):
-    if (prediction < 1 or prediction > 5 or math.isnan(prediction)):
-        text = colored('ERROR: ', 'red', attrs=['reverse', 'blink'])
-        print(text + "prediction {} at position {}".format(prediction, id))
+    p_of_g = {}
+    # calcular a probabilidade de ocorrência de cada gênero
+    total_count = 0
+    for genre in genres:
+        p_of_g[genre] = 0
+        for row in movies_data.itertuples():
+            for inner_genre in (row['genres']).split('|'):
+                if (inner_genre == genre):
+                    p_of_g[genre] += 1
+                total_count += 1
+
+    for genre in genres:
+        p_of_g[genre] = p_of_g[genre] / total_count
+
+    # Hypothesis probability
+    p_of_v = np.zeros((5))
+
+    for i in range(5):
+        if i + 1 in movie_ratings_frequence:
+            p_of_v[i] = (movie_ratings_frequence[i + 1] / (sum(movie_ratings_frequence.values())))
+        else:
+            p_of_v[i] = 0
+
+    # Conditional probability P(ai|vj)
+    p_a_v = np.zeros((len(genres), 5))
+
+    index = 0
+    for row in attributes.itertuples():
+        for col in range(5):
+
+            a = len(data.loc[(data['movie_id'] == row.movie_id) & (data['rating'] == col + 1)])
+            b = len(data.loc[(data['movie_id'] == movie) & (data['rating'] == col + 1)])
+
+            if a == 0 or b == 0:
+                p_a_v[index][col] = 0
+            else:
+                p_a_v[index][col] = b / a
+
+        index += 1
+
+    p = np.zeros((5))
+    for i in range(5):
+        p[i] = p_of_v[i] * np.prod(p_a_v[:,i])
+
+    return (np.argmax(p) + 1)
 
 
 # read dataset
@@ -61,8 +106,7 @@ with progressbar.ProgressBar(max_value=3970) as bar:
         movie = getattr(row, "movie_id")
 
         # run prediction algorithm
-        prediction = probabilistic(ratings, user-1, movie-1)
-        error_check(prediction, id)
+        prediction = naiveBayes(row.id, row.user_id, row.movie_id, train_data)
 
         # write new row in csv file
         end = timer()

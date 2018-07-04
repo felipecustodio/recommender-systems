@@ -6,7 +6,9 @@ SCC0284 - Recommender Systems - 2018/1
 Assignment 2
 ICMC - University of Sao Paulo
 Professor Marcelo Manzato
-Student: Felipe Scrochio Custódio - 9442688
+Students:
+Felipe Scrochio Custódio - 9442688
+Lucas Antognoni de Castro - 8936951
 """
 
 import pandas

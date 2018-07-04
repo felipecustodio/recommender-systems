@@ -6,7 +6,9 @@ SCC0284 - Recommender Systems - 2018/1
 Assignment 2
 ICMC - University of Sao Paulo
 Professor Marcelo Manzato
-Student: Felipe Scrochio Custódio - 9442688
+Students:
+Felipe Scrochio Custódio - 9442688
+Lucas Antognoni de Castro - 8936951
 """
 
 import pandas
@@ -29,11 +31,6 @@ algorithm = "linear-cbf-genres"
 def linear_cbf():
     pass
 
-
-def error_check(prediction, id):
-    if (prediction < 1 or prediction > 5 or math.isnan(prediction)):
-        text = colored('ERROR: ', 'red', attrs=['reverse', 'blink'])
-        print(text + "prediction {} at position {}".format(prediction, id))
 
 
 # read dataset
